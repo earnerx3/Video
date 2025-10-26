@@ -1,0 +1,1167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🍌 KachaKola Admin</title>
+
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+
+    <style>
+        /* *** নতুন জেনেরিক লাইট থিম *** */
+        :root {
+            --primary-bg: #FFFFFF;
+            --secondary-bg: #F7F9FC;
+            --border-color: #E1E8ED;
+            --text-primary: #14171A;
+            --text-secondary: #657786;
+            
+            --color-blue: #1D9BF0;
+            --color-green: #00BA7C;
+            --color-red: #E0245E;
+            --color-yellow: #FFD400;
+            --color-purple: #7856FF;
+        }
+        
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--primary-bg);
+            color: var(--text-primary);
+            margin: 0;
+            display: flex;
+            min-height: 100vh;
+        }
+        
+        /* Login Page */
+        #login-page {
+            width: 100%;
+            max-width: 360px;
+            margin: auto;
+            padding: 25px;
+            background: var(--primary-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+        }
+        #login-page h1 { text-align: center; color: var(--text-primary); }
+        #login-page input {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 15px;
+            background: var(--secondary-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 16px;
+        }
+        #login-error { color: var(--color-red); text-align: center; display: none; margin-bottom: 15px; }
+        
+        /* Admin App */
+        #admin-app {
+            display: none;
+            width: 100%;
+            flex-direction: column;
+        }
+        
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--primary-bg);
+            padding: 15px 25px;
+            border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        header h1 { margin: 0; font-size: 24px; color: var(--text-primary); }
+        
+        nav {
+            display: flex;
+            flex-wrap: wrap;
+            background: var(--primary-bg);
+            border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 69px; /* Height of header */
+            z-index: 99;
+        }
+        nav button {
+            padding: 15px 20px;
+            background: none;
+            border: none;
+            border-bottom: 3px solid transparent;
+            color: var(--text-secondary);
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        nav button.active {
+            color: var(--color-blue);
+            border-bottom-color: var(--color-blue);
+        }
+        
+        main { padding: 25px; background-color: var(--secondary-bg); min-height: calc(100vh - 130px); }
+        .page { display: none; }
+        .page.active { display: block; }
+        
+        h2 { border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-top: 0; }
+        
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
+        .form-section { background: var(--primary-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.03); }
+        .form-group { margin-bottom: 20px; }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+        input[type="text"], input[type="number"], input[type="url"], select, textarea {
+            width: 100%;
+            padding: 12px;
+            background: var(--primary-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 14px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        input:focus, select:focus, textarea:focus {
+            border-color: var(--color-blue);
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(29, 155, 240, 0.1);
+        }
+        textarea { min-height: 100px; }
+        
+        button {
+            padding: 10px 18px;
+            border-radius: 20px; /* Rounded buttons */
+            border: 1px solid transparent;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        button:disabled { opacity: 0.6; cursor: not-allowed; }
+        
+        /* Colorful Buttons */
+        .btn {
+            background: var(--secondary-bg);
+            color: var(--text-primary);
+            border-color: var(--border-color);
+        }
+        .btn:hover { background-color: var(--border-color); }
+        
+        .btn-primary { background: var(--color-blue); color: white; }
+        .btn-primary:hover { background: #1A8CD8; }
+        
+        .btn-success { background: var(--color-green); color: white; }
+        .btn-success:hover { background: #00A36D; }
+        
+        .btn-danger { background: var(--color-red); color: white; }
+        .btn-danger:hover { background: #C81E52; }
+        
+        .btn-warning { background: var(--color-yellow); color: var(--text-primary); }
+        .btn-warning:hover { background: #E6BF00; }
+        
+        .list-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--secondary-bg);
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border: 1px solid var(--border-color);
+        }
+        .list-item-info { font-size: 14px; }
+        .list-item-info strong { color: var(--text-primary); }
+        .list-item-info span { color: var(--text-secondary); }
+        
+        .table-container { overflow-x: auto; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--primary-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+        }
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+            white-space: nowrap;
+        }
+        th { background: var(--secondary-bg); font-size: 14px; color: var(--text-secondary); }
+        td { font-size: 14px; }
+        tr:last-child td { border-bottom: none; }
+        
+        /* *** নতুন এডিট ইউজার মোডাল *** */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 2000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(5px);
+        }
+        .modal-box {
+            background: var(--primary-bg);
+            border-radius: 16px;
+            padding: 25px;
+            max-width: 450px;
+            width: 90%;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .modal-header h3 { margin: 0; }
+        .modal-close-btn {
+            background: var(--secondary-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            width: 30px;
+            height: 30px;
+            padding: 0;
+            border-radius: 50%;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .modal-body .form-group p {
+            font-size: 14px;
+            color: var(--text-secondary);
+            background: var(--secondary-bg);
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            margin: 0;
+        }
+        .modal-body .form-group p strong { color: var(--text-primary); }
+        .modal-footer {
+            margin-top: 25px;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+        
+        @media (max-width: 600px) {
+            nav { justify-content: space-around; }
+            nav button { padding: 12px 10px; font-size: 14px; }
+            header { padding: 15px; }
+            header h1 { font-size: 20px; }
+            main { padding: 15px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="login-page">
+        <h1>Admin Panel</h1>
+        <div class="form-group">
+            <input type="email" id="login-email" placeholder="Admin Email">
+        </div>
+        <div class="form-group">
+            <input type="password" id="login-password" placeholder="Password">
+        </div>
+        <p id="login-error">Invalid email or password.</p>
+        <button id="login-button" class="btn-primary" style="width:100%; padding: 12px;">Login</button>
+    </div>
+
+    <div id="admin-app">
+        <header>
+            <h1>Admin Panel</h1>
+            <button id="logout-button" class="btn-danger">Logout</button>
+        </header>
+
+        <nav>
+            <button class="nav-btn active" data-page="page-dashboard">Dashboard</button>
+            <button class="nav-btn" data-page="page-settings">App Settings</button>
+            <button class="nav-btn" data-page="page-manage-lists">Manage Lists</button>
+            <button class="nav-btn" data-page="page-withdrawals">Withdrawals</button>
+            <button class="nav-btn" data-page="page-users">Users</button>
+        </nav>
+
+        <main>
+            <div id="page-dashboard" class="page active">
+                <h2>Dashboard</h2>
+                <div class="form-grid">
+                    <div class="form-section" style="text-align: center;">
+                        <h3 style="color: var(--text-secondary);">Pending Withdrawals</h3>
+                        <p id="stat-pending-withdrawals" style="font-size: 36px; font-weight: 700; color: var(--color-red); margin: 10px 0;">0</p>
+                    </div>
+                    <div class="form-section" style="text-align: center;">
+                        <h3 style="color: var(--text-secondary);">Total Users</h3>
+                        <p id="stat-total-users" style="font-size: 36px; font-weight: 700; color: var(--color-blue); margin: 10px 0;">0</p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="page-settings" class="page">
+                <h2>App Settings</h2>
+                <div class="form-grid">
+                    <div class="form-section">
+                        <h3>Monetization</h3>
+                        <div class="form-group">
+                            <label for="config-monetagZoneId">Monetag Zone ID</label>
+                            <input type="text" id="config-monetagZoneId">
+                        </div>
+                    </div>
+                    <div class="form-section">
+                        <h3>Currency</h3>
+                        <div class="form-group">
+                            <label for="config-currencySymbol">Currency Symbol (e.g., TK, Points)</label>
+                            <input type="text" id="config-currencySymbol">
+                        </div>
+                        <div class="form-group">
+                            <label for="config-dollarExchangeRate">Points per 1 Unit of Currency (e.g., 1000)</label>
+                            <input type="number" id="config-dollarExchangeRate">
+                        </div>
+                    </div>
+                    <div class="form-section">
+                        <h3>Tasks & Ads</h3>
+                        <div class="form-group">
+                            <label for="config-dailyTaskLimit">Daily Ad Task Limit</label>
+                            <input type="number" id="config-dailyTaskLimit">
+                        </div>
+                        <div class="form-group">
+                            <label for="config-standardAdPoints">Standard Ad Points</label>
+                            <input type="number" id="config-standardAdPoints">
+                        </div>
+                        <div class="form-group">
+                            <label for="config-bonusAdPoints">Bonus (Pop) Ad Points</label>
+                            <input type="number" id="config-bonusAdPoints">
+                        </div>
+                    </div>
+                    <div class="form-section">
+                        <h3>Referrals</h3>
+                        <div class="form-group">
+                            <label for="config-referralBonus">One-time Join Bonus (Points)</label>
+                            <input type="number" id="config-referralBonus">
+                        </div>
+                        <div class="form-group">
+                            <label for="config-referralPercentage">Task Commission (%)</label>
+                            <input type="number" id="config-referralPercentage">
+                        </div>
+                    </div>
+                    <div class="form-section">
+                        <h3>Withdrawals</h3>
+                        <div class="form-group">
+                            <label for="config-minWithdrawAmount">Global Minimum Withdraw (Points)</label>
+                            <input type="number" id="config-minWithdrawAmount">
+                        </div>
+                        <div class="form-group">
+                            <label for="config-minReferralForWithdraw">Min Referrals to Withdraw</label>
+                            <input type="number" id="config-minReferralForWithdraw">
+                        </div>
+                    </div>
+                    
+                    <div class="form-section">
+                        <h3>Bonus Settings</h3>
+                        <div class="form-group">
+                            <label for="config-dailyCheckInBonus">Daily Check-in Bonus (Points)</label>
+                            <input type="number" id="config-dailyCheckInBonus">
+                        </div>
+                    </div>
+                    
+                    <div class="form-section" style="grid-column: span 2;">
+                        <h3>Info Popup Settings</h3>
+                        <div class="form-grid" style="grid-template-columns: 1fr 1fr;">
+                            <div class="form-group">
+                                <label for="config-popupEnabled">Enable Popup</label>
+                                <select id="config-popupEnabled">
+                                    <option value="true">Yes, Show Popup</option>
+                                    <option value="false">No, Hide Popup</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="config-popupTitle">Popup Title</label>
+                                <input type="text" id="config-popupTitle">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="config-popupMessage">Popup Message (Use \n for new lines)</label>
+                            <textarea id="config-popupMessage" rows="5"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="config-popupVideoLink">Popup Video Link</label>
+                            <input type="url" id="config-popupVideoLink" placeholder="https://t.me/...">
+                        </div>
+                    </div>
+                </div>
+                <button id="save-settings-btn" class="btn-primary" style="margin-top: 20px; padding: 12px 25px;">Save All Settings</button>
+            </div>
+
+            <div id="page-manage-lists" class="page">
+                <h2>Manage Lists</h2>
+                <div class="form-grid">
+                    <div class="form-section">
+                        <h3>Dynamic Tasks</h3>
+                        <div id="dynamic-tasks-list"></div>
+                        <form id="form-add-task" class="form-group">
+                            <h4>Add New Task</h4>
+                            <input type="text" id="task-id" placeholder="Unique ID (e.g., join_channel)" required>
+                            <input type="text" id="task-name" placeholder="Task Name (e.g., চ্যানেলে যোগ দিন)" required style="margin-top: 10px;">
+                            <input type="text" id="task-desc" placeholder="Description (e.g., Get 1 TK)" required style="margin-top: 10px;">
+                            <input type="number" id="task-points" placeholder="Points (e.g., 1000)" required style="margin-top: 10px;">
+                            <input type="url" id="task-link" placeholder="Link (https://...)" required style="margin-top: 10px;">
+                            <input type="number" id="task-timer" placeholder="Timer (seconds)" required style="margin-top: 10px;">
+                            <select id="task-icon" style="margin-top: 10px;">
+                                <option value="telegram">Telegram Icon</option>
+                                <option value="youtube">YouTube Icon</option>
+                                <option value="link">Link Icon</option>
+                            </select>
+                            <select id="task-type" style="margin-top: 10px;">
+                                <option value="daily">Daily Task</option>
+                                <option value="one-time">One-Time Task</option>
+                            </select>
+                            <button type="submit" class="btn-primary" style="margin-top: 15px;">Add Task</button>
+                        </form>
+                    </div>
+                    <div class="form-section">
+                        <h3>Support Links</h3>
+                        <div id="support-links-list"></div>
+                        <form id="form-add-link" class="form-group">
+                            <h4>Add New Link</h4>
+                            <input type="text" id="link-name" placeholder="Link Name (e.g., পেমেন্ট প্রুফ)" required>
+                            <input type="url" id="link-link" placeholder="Link (https://...)" required style="margin-top: 10px;">
+                            <select id="link-icon" style="margin-top: 10px;">
+                                <option value="telegram">Telegram Icon</option>
+                                <option value="video">Video Icon</option>
+                                <option value="support">Support Icon</option>
+                            </select>
+                            <button type="submit" class="btn-primary" style="margin-top: 15px;">Add Link</button>
+                        </form>
+                    </div>
+                    <div class="form-section">
+                        <h3>Payment Methods</h3>
+                        <div id="payment-methods-list"></div>
+                        <form id="form-add-method" class="form-group">
+                            <h4>Add New Method</h4>
+                            <input type="text" id="method-id" placeholder="Unique ID (e.g., bkash)" required>
+                            <input type="text" id="method-name" placeholder="Name (e.g., বিকাশ)" required style="margin-top: 10px;">
+                            <input type="number" id="method-min" placeholder="Min Amount (Points)" required style="margin-top: 10px;">
+                            <button type="submit" class="btn-primary" style="margin-top: 15px;">Add Method</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div id="page-withdrawals" class="page">
+                <h2>Pending Withdrawals</h2>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>User ID</th>
+                                <th>Amount (Points)</th>
+                                <th>Method</th>
+                                <th>Details</th>
+                                <th>Date</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="withdrawals-table-body">
+                            </tbody>
+                    </table>
+                </div>
+
+                <h2 style="margin-top: 40px;">Withdrawal History (Last 50)</h2>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>User ID</th>
+                                <th>Amount (Points)</th>
+                                <th>Method</th>
+                                <th>Details</th>
+                                <th>Date</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="withdrawals-history-table-body">
+                            </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="page-users" class="page">
+                <h2>User Management</h2>
+                
+                <div class="form-section" style="margin-bottom: 20px;">
+                    <h4>Search User</h4>
+                    <div class="form-group" style="display: flex; gap: 10px; margin-bottom: 0;">
+                        <input type="text" id="user-search" placeholder="Search by User ID..." style="margin-top: 0; width: 100%;">
+                        <button id="user-search-btn" class="btn" style="margin-top: 0; width: auto; white-space: nowrap;">Search</button>
+                    </div>
+                </div>
+                
+                <div id="user-search-results" style="margin-bottom: 20px;"></div>
+
+                <h2>All Users</h2>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>User ID</th>
+                                <th>Name</th>
+                                <th>Balance</th>
+                                <th>Referrals</th>
+                                <th>Actions</th> </tr>
+                        </thead>
+                        <tbody id="users-table-body">
+                        </tbody>
+                    </table>
+                </div>
+                <div class"pagination-controls" style="margin-top: 20px; text-align: center;">
+                    <button id="users-prev-btn" class="btn">Previous</button>
+                    <span id="users-page-info" style="margin: 0 15px; color: var(--text-secondary);">Page 1</span>
+                    <button id="users-next-btn" class="btn">Next</button>
+                </div>
+            </div>
+            
+        </main>
+    </div>
+    
+    <div id="editUserModal" class="modal-overlay">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3>Edit User</h3>
+                <button class="modal-close-btn" onclick="closeEditUserModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>User ID</label>
+                    <p><strong id="modal-user-id">...</strong></p>
+                </div>
+                <div class="form-group">
+                    <label>User Name</label>
+                    <p id="modal-user-name">...</p>
+                </div>
+                <div class="form-group">
+                    <label>Current Balance</label>
+                    <p id="modal-user-balance">...</p>
+                </div>
+                <div class="form-group">
+                    <label for="modal-edit-points">Add/Remove Points</label>
+                    <input type="number" id="modal-edit-points" placeholder="e.g., 500 or -500">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn" onclick="closeEditUserModal()">Cancel</button>
+                <button class="btn-success" id="modal-save-btn" onclick="saveUserEdits()">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        // ####################################################################
+        // ################## START: FIREBASE CONFIG ##########################
+        // ####################################################################
+        //
+        //    এই অংশটি আপনার নতুন প্রজেক্টের জন্য পরিবর্তন করুন
+        //    আপনার Firebase প্রজেক্টের "Project Settings" > "General"
+        //    থেকে "Your apps" > "Web app" > "Config" কপি করে এখানে পেস্ট করুন
+        //
+        const firebaseConfig = {
+            apiKey: "AIzaSyC2yM6GXC2kZMEEMYjdsveDpDHfKzriq0I",
+            authDomain: "nahid-fa459.firebaseapp.com",
+            databaseURL: "https://nahid-fa459-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "nahid-fa459",
+            storageBucket: "nahid-fa459.firebasestorage.app",
+            messagingSenderId: "970994023392",
+            appId: "1:970994023392:web:571332949894edcf4d0985",
+            measurementId: "G-T7N8TJ9MQ1"
+        };
+        //
+        // ####################################################################
+        // ################### END: FIREBASE CONFIG ###########################
+        // ####################################################################
+
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        // Global state
+        let currentConfig = {};
+        
+        let lastVisibleUser = null;
+        let firstVisibleUser = null;
+        let userPageHistory = [];
+        let currentPageNum = 1;
+        const USERS_PER_PAGE = 20;
+
+        // DOM Elements
+        const loginPage = document.getElementById('login-page');
+        const adminApp = document.getElementById('admin-app');
+        const loginButton = document.getElementById('login-button');
+        const loginEmail = document.getElementById('login-email');
+        const loginPassword = document.getElementById('login-password');
+        const loginError = document.getElementById('login-error');
+        const logoutButton = document.getElementById('logout-button');
+        const navButtons = document.querySelectorAll('.nav-btn');
+        const pages = document.querySelectorAll('.page');
+        
+        // --- Authentication ---
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                loginPage.style.display = 'none';
+                adminApp.style.display = 'flex';
+                loadAllData();
+            } else {
+                loginPage.style.display = 'block';
+                adminApp.style.display = 'none';
+            }
+        });
+
+        loginButton.addEventListener('click', () => {
+            loginButton.disabled = true;
+            loginButton.textContent = 'Logging in...';
+            const email = loginEmail.value;
+            const password = loginPassword.value;
+            auth.signInWithEmailAndPassword(email, password)
+                .catch(error => {
+                    loginError.style.display = 'block';
+                    loginError.textContent = error.message;
+                })
+                .finally(() => {
+                    loginButton.disabled = false;
+                    loginButton.textContent = 'Login';
+                });
+        });
+
+        logoutButton.addEventListener('click', () => {
+            auth.signOut();
+        });
+
+        // --- Navigation ---
+        navButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const pageId = button.dataset.page;
+                navButtons.forEach(btn => btn.classList.remove('active'));
+                pages.forEach(page => page.classList.remove('active'));
+                button.classList.add('active');
+                document.getElementById(pageId).classList.add('active');
+            });
+        });
+        
+        // --- Data Loading ---
+        function loadAllData() {
+            loadAppConfig();
+            loadPendingWithdrawals();
+            loadWithdrawalHistory();
+            loadUsersPage('first');
+            loadDashboardStats();
+        }
+
+        async function loadAppConfig() {
+            try {
+                const doc = await db.collection('config').doc('appConfig').get();
+                if (doc.exists) {
+                    currentConfig = doc.data();
+                    
+                    // App Settings Page
+                    document.getElementById('config-monetagZoneId').value = currentConfig.monetagZoneId || '';
+                    document.getElementById('config-currencySymbol').value = currentConfig.currencySymbol || 'TK';
+                    document.getElementById('config-dollarExchangeRate').value = currentConfig.dollarExchangeRate || 1000;
+                    document.getElementById('config-dailyTaskLimit').value = currentConfig.dailyTaskLimit || 10;
+                    document.getElementById('config-standardAdPoints').value = currentConfig.standardAdPoints || 0;
+                    document.getElementById('config-bonusAdPoints').value = currentConfig.bonusAdPoints || 0;
+                    document.getElementById('config-referralBonus').value = currentConfig.referralBonus || 0;
+                    document.getElementById('config-referralPercentage').value = currentConfig.referralPercentage || 0;
+                    document.getElementById('config-minWithdrawAmount').value = currentConfig.minWithdrawAmount || 0;
+                    document.getElementById('config-minReferralForWithdraw').value = currentConfig.minReferralForWithdraw || 0;
+                    document.getElementById('config-dailyCheckInBonus').value = currentConfig.dailyCheckInBonus || 0; // <-- NEW
+                    
+                    document.getElementById('config-popupEnabled').value = String(currentConfig.popupEnabled) === 'false' ? 'false' : 'true';
+                    document.getElementById('config-popupTitle').value = currentConfig.popupTitle || '';
+                    document.getElementById('config-popupMessage').value = currentConfig.popupMessage || '';
+                    document.getElementById('config-popupVideoLink').value = currentConfig.popupVideoLink || '';
+
+                    // Manage Lists Page
+                    renderLists();
+                    
+                } else {
+                    alert('Error: "appConfig" document not found in "config" collection.');
+                }
+            } catch (e) {
+                console.error("Error loading config:", e);
+                alert("Error loading config.");
+            }
+        }
+        
+        async function loadPendingWithdrawals() {
+            const tableBody = document.getElementById('withdrawals-table-body');
+            tableBody.innerHTML = '<tr><td colspan="6">Loading...</td></tr>';
+            try {
+                const snapshot = await db.collection('withdrawals')
+                                     .where('status', '==', 'Pending')
+                                     .orderBy('createdAt', 'desc')
+                                     .get();
+                                     
+                if (snapshot.empty) {
+                    tableBody.innerHTML = '<tr><td colspan="6">No pending withdrawals found.</td></tr>';
+                    document.getElementById('stat-pending-withdrawals').textContent = 0;
+                    return;
+                }
+                
+                document.getElementById('stat-pending-withdrawals').textContent = snapshot.size;
+                tableBody.innerHTML = '';
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    const date = data.createdAt ? new Date(data.createdAt.toDate()).toLocaleString() : 'N/A';
+                    tableBody.innerHTML += `
+                        <tr>
+                            <td>${data.userId}</td>
+                            <td>${data.amount}</td>
+                            <td>${data.paymentMethodName}</td>
+                            <td>${data.paymentAddress}</td>
+                            <td>${date}</td>
+                            <td>
+                                <button class="btn-success" onclick="handleWithdrawal('${doc.id}', 'Approved')" style="padding: 5px 10px;">Approve</button>
+                                <button class="btn-danger" onclick="handleWithdrawal('${doc.id}', 'Rejected')" style="margin-left: 5px; padding: 5px 10px;">Reject</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            } catch (e) {
+                console.error("Error loading withdrawals:", e);
+                tableBody.innerHTML = `<tr><td colspan="6" style="color:red;">${e.message}</td></tr>`;
+                 if (e.code === 'failed-precondition') {
+                    tableBody.innerHTML = `<tr><td colspan="6" style="color:red; text-align: left; white-space: normal;">
+                        <b>Error: Missing Index.</b>
+                        <p>You need to create a composite index for this query. Click the link below, log in, and click 'Save'.</p>
+                        <a href="https://console.firebase.google.com/v1/r/project/${firebaseConfig.projectId}/firestore/indexes?create_composite=ClFwcm9qZWN0cy9lYXJuZXJ4LTUwNmUxL2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy93aXRoZHJhd2Fscy9pbmRleGVzL18QARoKCgZzdGF0dXMQARoNCgljcmVhdGVkQXQQAhoMCghfX25hbWVfXxAC" target="_blank" style="color: var(--color-blue); text-decoration: underline;">Click Here to Create Index</a>
+                    </td></tr>`;
+                }
+            }
+        }
+
+        async function loadWithdrawalHistory() {
+            const tableBody = document.getElementById('withdrawals-history-table-body');
+            tableBody.innerHTML = '<tr><td colspan="6">Loading...</td></tr>';
+            try {
+                const snapshot = await db.collection('withdrawals')
+                                        .where('status', '!=', 'Pending')
+                                        .orderBy('status')
+                                        .orderBy('createdAt', 'desc')
+                                        .limit(50)
+                                        .get();
+                                        
+                if (snapshot.empty) {
+                    tableBody.innerHTML = '<tr><td colspan="6">No history found.</td></tr>';
+                    return;
+                }
+                
+                tableBody.innerHTML = '';
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    const date = data.createdAt ? new Date(data.createdAt.toDate()).toLocaleString() : 'N/A';
+                    
+                    let statusClass = '';
+                    if (data.status === 'Approved') statusClass = 'btn-success';
+                    if (data.status === 'Rejected') statusClass = 'btn-danger';
+
+                    tableBody.innerHTML += `
+                        <tr>
+                            <td>${data.userId}</td>
+                            <td>${data.amount}</td>
+                            <td>${data.paymentMethodName}</td>
+                            <td>${data.paymentAddress}</td>
+                            <td>${date}</td>
+                            <td>
+                                <span class="${statusClass}" style="padding: 5px 10px; border-radius: 20px; color: white; font-weight: 600;">
+                                    ${data.status}
+                                </span>
+                            </td>
+                        </tr>
+                    `;
+                });
+            } catch (e) {
+                console.error("Error loading withdrawal history:", e);
+                tableBody.innerHTML = `<tr><td colspan="6" style="color:red; text-align: left; white-space: normal;"><b>Error:</b> ${e.message}</td></tr>`;
+                if (e.code === 'failed-precondition') {
+                    tableBody.innerHTML = `<tr><td colspan="6" style="color:red; text-align: left; white-space: normal;">
+                        <b>Error: Missing Index.</b>
+                        <p>Please go to your Firestore settings and create a new composite index for the '<b>withdrawals</b>' collection with these fields:</p>
+                        <ol style="margin-left: 20px;">
+                            <li><b>status</b> (Ascending)</li>
+                            <li><b>createdAt</b> (Descending)</li>
+                        </ol>
+                    </td></tr>`;
+                }
+            }
+        }
+        
+        async function loadDashboardStats() {
+            try {
+                const userSnapshot = await db.collection('users').get();
+                document.getElementById('stat-total-users').textContent = userSnapshot.size;
+            } catch (e) {
+                console.error("Error loading stats:", e);
+            }
+        }
+        
+        // --- Data Saving ---
+        
+        document.getElementById('save-settings-btn').addEventListener('click', async () => {
+            const settings = {
+                monetagZoneId: document.getElementById('config-monetagZoneId').value,
+                currencySymbol: document.getElementById('config-currencySymbol').value,
+                dollarExchangeRate: Number(document.getElementById('config-dollarExchangeRate').value),
+                dailyTaskLimit: Number(document.getElementById('config-dailyTaskLimit').value),
+                standardAdPoints: Number(document.getElementById('config-standardAdPoints').value),
+                bonusAdPoints: Number(document.getElementById('config-bonusAdPoints').value),
+                referralBonus: Number(document.getElementById('config-referralBonus').value),
+                referralPercentage: Number(document.getElementById('config-referralPercentage').value),
+                minWithdrawAmount: Number(document.getElementById('config-minWithdrawAmount').value),
+                minReferralForWithdraw: Number(document.getElementById('config-minReferralForWithdraw').value),
+                dailyCheckInBonus: Number(document.getElementById('config-dailyCheckInBonus').value), // <-- NEW
+
+                popupEnabled: document.getElementById('config-popupEnabled').value === 'true',
+                popupTitle: document.getElementById('config-popupTitle').value,
+                popupMessage: document.getElementById('config-popupMessage').value,
+                popupVideoLink: document.getElementById('config-popupVideoLink').value
+            };
+            
+            try {
+                await db.collection('config').doc('appConfig').update(settings);
+                alert("Settings saved successfully!");
+                loadAppConfig();
+            } catch (e) {
+                console.error("Error saving settings:", e);
+                alert("Error saving settings.");
+            }
+        });
+        
+        // --- Manage Lists (Add/Remove) ---
+        
+        function renderLists() {
+            const tasksList = document.getElementById('dynamic-tasks-list');
+            tasksList.innerHTML = '';
+            (currentConfig.dynamicTasks || []).forEach((task, index) => {
+                tasksList.innerHTML += `
+                    <div class="list-item">
+                        <div class="list-item-info">
+                            <strong>${task.name}</strong> (${task.points} pts)
+                            <span>[${task.type}]</span>
+                        </div>
+                        <button class="btn-danger" style="padding: 5px 10px;" onclick="removeListItem('dynamicTasks', ${index})">Remove</button>
+                    </div>
+                `;
+            });
+            
+            const linksList = document.getElementById('support-links-list');
+            linksList.innerHTML = '';
+            (currentConfig.supportLinks || []).forEach((link, index) => {
+                linksList.innerHTML += `
+                    <div class="list-item">
+                        <div class="list-item-info"><strong>${link.name}</strong></div>
+                        <button class="btn-danger" style="padding: 5px 10px;" onclick="removeListItem('supportLinks', ${index})">Remove</button>
+                    </div>
+                `;
+            });
+            
+            const methodsList = document.getElementById('payment-methods-list');
+            methodsList.innerHTML = '';
+            (currentConfig.paymentMethods || []).forEach((method, index) => {
+                methodsList.innerHTML += `
+                    <div class="list-item">
+                        <div class="list-item-info">
+                            <strong>${method.name}</strong>
+                            <span>(Min: ${method.minAmount} pts)</span>
+                        </div>
+                        <button class="btn-danger" style="padding: 5px 10px;" onclick="removeListItem('paymentMethods', ${index})">Remove</button>
+                    </div>
+                `;
+            });
+        }
+        
+        document.getElementById('form-add-task').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const newTask = {
+                id: document.getElementById('task-id').value,
+                name: document.getElementById('task-name').value,
+                description: document.getElementById('task-desc').value,
+                points: Number(document.getElementById('task-points').value),
+                link: document.getElementById('task-link').value,
+                timer: Number(document.getElementById('task-timer').value),
+                icon: document.getElementById('task-icon').value,
+                type: document.getElementById('task-type').value,
+            };
+            
+            const updatedTasks = currentConfig.dynamicTasks || [];
+            updatedTasks.push(newTask);
+            
+            try {
+                await db.collection('config').doc('appConfig').update({ dynamicTasks: updatedTasks });
+                alert('Task added!');
+                e.target.reset();
+                loadAppConfig();
+            } catch (err) { alert(err.message); }
+        });
+        
+        document.getElementById('form-add-link').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const newLink = {
+                name: document.getElementById('link-name').value,
+                link: document.getElementById('link-link').value,
+                icon: document.getElementById('link-icon').value,
+            };
+            const updatedLinks = currentConfig.supportLinks || [];
+            updatedLinks.push(newLink);
+            
+            try {
+                await db.collection('config').doc('appConfig').update({ supportLinks: updatedLinks });
+                alert('Link added!');
+                e.target.reset();
+                loadAppConfig();
+            } catch (err) { alert(err.message); }
+        });
+        
+        document.getElementById('form-add-method').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const newMethod = {
+                id: document.getElementById('method-id').value,
+                name: document.getElementById('method-name').value,
+                minAmount: Number(document.getElementById('method-min').value),
+            };
+            const updatedMethods = currentConfig.paymentMethods || [];
+            updatedMethods.push(newMethod);
+            
+            try {
+                await db.collection('config').doc('appConfig').update({ paymentMethods: updatedMethods });
+                alert('Method added!');
+                e.target.reset();
+                loadAppConfig();
+            } catch (err) { alert(err.message); }
+        });
+
+        async function removeListItem(listName, index) {
+            if (!confirm('Are you sure you want to remove this item?')) return;
+            
+            let updatedList = currentConfig[listName] || [];
+            updatedList.splice(index, 1);
+            
+            try {
+                await db.collection('config').doc('appConfig').update({ [listName]: updatedList });
+                alert('Item removed!');
+                loadAppConfig();
+            } catch (err) { alert(err.message); }
+        }
+        
+        // --- Withdrawals ---
+        async function handleWithdrawal(docId, newStatus) {
+            if (!confirm(`Are you sure you want to '${newStatus}' this withdrawal?`)) return;
+            
+            try {
+                await db.collection('withdrawals').doc(docId).update({ status: newStatus });
+                alert(`Withdrawal marked as ${newStatus}!`);
+                loadPendingWithdrawals();
+                loadWithdrawalHistory();
+            } catch (e) {
+                console.error("Error updating withdrawal:", e);
+                alert("Error updating status.");
+            }
+        }
+        
+        // --- User Management (UPDATED with MODAL) ---
+        
+        document.getElementById('users-prev-btn').addEventListener('click', () => loadUsersPage('prev'));
+        document.getElementById('users-next-btn').addEventListener('click', () => loadUsersPage('next'));
+
+        async function loadUsersPage(direction = 'first') {
+            const tableBody = document.getElementById('users-table-body');
+            const pageInfo = document.getElementById('users-page-info');
+            const prevBtn = document.getElementById('users-prev-btn');
+            const nextBtn = document.getElementById('users-next-btn');
+
+            tableBody.innerHTML = '<tr><td colspan="6">Loading...</td></tr>';
+            let query;
+            
+            try {
+                if (direction === 'first') {
+                    query = db.collection('users').orderBy('userId').limit(USERS_PER_PAGE);
+                    currentPageNum = 1;
+                    userPageHistory = [];
+                } else if (direction === 'next') {
+                    if (!lastVisibleUser) {
+                        tableBody.innerHTML = '<tr><td colspan="6">No more users.</td></tr>';
+                        nextBtn.disabled = true; return;
+                    }
+                    userPageHistory.push(firstVisibleUser);
+                    query = db.collection('users').orderBy('userId').startAfter(lastVisibleUser).limit(USERS_PER_PAGE);
+                    currentPageNum++;
+                } else if (direction === 'prev') {
+                    if (userPageHistory.length === 0) { prevBtn.disabled = true; return; }
+                    const prevPageFirstDoc = userPageHistory.pop();
+                    query = db.collection('users').orderBy('userId').startAt(prevPageFirstDoc).limit(USERS_PER_PAGE);
+                    currentPageNum--;
+                }
+
+                const snapshot = await query.get();
+                if (snapshot.empty) {
+                    if(direction === 'first') tableBody.innerHTML = '<tr><td colspan="6">No users found.</td></tr>';
+                    if(direction === 'next') {
+                         tableBody.innerHTML = '<tr><td colspan="6">No more users.</td></tr>';
+                         lastVisibleUser = null;
+                    }
+                    nextBtn.disabled = true;
+                } else {
+                    firstVisibleUser = snapshot.docs[0];
+                    lastVisibleUser = snapshot.docs[snapshot.docs.length - 1];
+                    renderUsersTable(snapshot, (currentPageNum - 1) * USERS_PER_PAGE + 1);
+                    nextBtn.disabled = snapshot.size < USERS_PER_PAGE;
+                }
+                prevBtn.disabled = userPageHistory.length === 0;
+                pageInfo.textContent = `Page ${currentPageNum}`;
+            } catch (e) {
+                console.error("Error loading users:", e);
+                tableBody.innerHTML = `<tr><td colspan="6" style="color:red;">${e.message}</td></tr>`;
+                if (e.code === 'failed-precondition') {
+                    tableBody.innerHTML = `<tr><td colspan="6" style="color:red;">
+                        <b>Error: Missing Index.</b>
+                        <p>Please create a single-field index for '<b>userId</b>' (Ascending) in the '<b>users</b>' collection.</p>
+                    </td></tr>`;
+                }
+            }
+        }
+
+        function renderUsersTable(snapshot, serialStart) {
+            const tableBody = document.getElementById('users-table-body');
+            tableBody.innerHTML = '';
+            let count = serialStart;
+            
+            snapshot.forEach(doc => {
+                const user = doc.data();
+                tableBody.innerHTML += `
+                    <tr>
+                        <td>${count++}</td>
+                        <td>${user.userId}</td>
+                        <td>${user.first_name || 'N/A'} ${user.last_name || ''}</td>
+                        <td>${user.balance || 0}</td>
+                        <td>${user.referredUsersCount || 0}</td>
+                        <td>
+                            <button class="btn-primary" style="padding: 5px 10px;" 
+                                onclick="showEditUserModal('${user.userId}', '${user.first_name || 'N/A'}', '${user.balance || 0}')">
+                                Edit
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        document.getElementById('user-search-btn').addEventListener('click', async () => {
+            const query = document.getElementById('user-search').value;
+            if (!query) return;
+            
+            const resultsDiv = document.getElementById('user-search-results');
+            resultsDiv.innerHTML = 'Searching...';
+            
+            try {
+                const doc = await db.collection('users').doc(query).get();
+                if (!doc.exists) {
+                    resultsDiv.innerHTML = '<p style="color:var(--color-red)">User not found.</p>';
+                    return;
+                }
+                
+                const user = doc.data();
+                resultsDiv.innerHTML = `
+                    <div class="form-section">
+                        <h4>Search Result: ${user.first_name || 'No Name'} (${user.userId})</h4>
+                        <p>Balance: <strong>${user.balance}</strong> points | Referrals: ${user.referredUsersCount || 0}</p>
+                        <div class="form-group" style="margin-top: 15px;">
+                            <label>Add/Remove Points</label>
+                            <input type="number" id="user-edit-points" placeholder="e.g., 500 or -500">
+                            <button class="btn-success" style="margin-top: 10px;"
+                                onclick="updateUserPointsFromSearch('${user.userId}')">Update Balance</button>
+                        </div>
+                    </div>
+                `;
+            } catch (e) {
+                resultsDiv.innerHTML = `<p style="color:var(--color-red)">${e.message}</p>`;
+            }
+        });
+        
+        // *** নতুন মোডাল ফাংশন ***
+        function showEditUserModal(userId, name, balance) {
+            document.getElementById('modal-user-id').textContent = userId;
+            document.getElementById('modal-user-name').textContent = name;
+            document.getElementById('modal-user-balance').textContent = balance;
+            document.getElementById('modal-edit-points').value = '';
+            document.getElementById('editUserModal').style.display = 'flex';
+        }
+
+        function closeEditUserModal() {
+            document.getElementById('editUserModal').style.display = 'none';
+        }
+        
+        async function saveUserEdits() {
+            const userId = document.getElementById('modal-user-id').textContent;
+            const amount = Number(document.getElementById('modal-edit-points').value);
+            
+            if (amount === 0) {
+                 alert("Please enter an amount.");
+                 return;
+            }
+            
+            await updateUserPoints(userId, amount);
+            closeEditUserModal();
+        }
+
+        function updateUserPointsFromSearch(userId) {
+            const amount = Number(document.getElementById('user-edit-points').value);
+            if (amount === 0) {
+                 alert("Please enter an amount.");
+                 return;
+            }
+            updateUserPoints(userId, amount);
+        }
+
+        // *** নতুন কোর ইউজার আপডেট ফাংশন ***
+        async function updateUserPoints(userId, amount) {
+            if (!userId || isNaN(amount)) {
+                alert("Invalid amount or User ID.");
+                return;
+            }
+            if (!confirm(`Are you sure you want to add ${amount} points to user ${userId}?`)) return;
+            
+            try {
+                await db.collection('users').doc(userId).update({
+                    balance: firebase.firestore.FieldValue.increment(amount)
+                });
+                alert('User balance updated successfully!');
+                
+                // রিলোড
+                loadUsersPage('first');
+                const searchInput = document.getElementById('user-search').value;
+                if(searchInput === userId) {
+                    document.getElementById('user-search-btn').click();
+                }
+
+            } catch (e) {
+                alert(e.message);
+            }
+        }
+
+    </script>
+</body>
+</html>
