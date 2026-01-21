@@ -952,6 +952,10 @@
         let currentUser = null; 
         let appConfig = null;
         
+        // *** নতুন ভেরিয়েবল (লজিক কন্ট্রোলের জন্য) ***
+        let userMembershipStatus = 'inactive'; // ডিফল্ট স্ট্যাটাস
+        let userTotalSales = 0; // মোট কমপ্লিট সেল সংখ্যা
+        
         // *** অ্যাড টগল ভেরিয়েবল (Ad Toggle State) ***
         // false = সার্ভার অ্যাড, true = ফিক্সড অ্যাড
         let isFixedAdNext = false; 
@@ -1241,6 +1245,35 @@
             const alertBox = document.getElementById('customAlert');
             alertBox.classList.remove('show');
             setTimeout(() => overlay.style.display = 'none', 300);
+        }
+        
+        // *** NEW: SALES RESTRICTION ALERT ***
+        // এই ফাংশনটি উইথড্র বাটন ক্লিক করলে যদি সেল কম থাকে তবে কল হবে
+        function showSalesRestrictionAlert() {
+            const overlay = document.getElementById('customAlertOverlay');
+            const alertBox = document.getElementById('customAlert');
+            
+            document.getElementById('customAlertTitle').textContent = "Requirement Not Met 🔒";
+            document.getElementById('customAlertMessage').innerHTML = `টাকা উত্তোলন করতে মিনিমাম <b style="color:#FDD835">৫টি</b> প্রোডাক্ট সেল করতে হবে।<br><br>ড্রপশিপিংয়ে জয়েন করুন এবং সেল শুরু করুন।`;
+            document.getElementById('customAlertIcon').textContent = "⚠️";
+            
+            // বাটন পরিবর্তন করা হচ্ছে জয়েন করার জন্য
+            const btn = document.querySelector('.custom-alert-btn');
+            btn.textContent = "Join & Sell Now";
+            
+            // একবার ক্লিকে লিংক ওপেন হবে এবং অ্যালার্ট বন্ধ হবে
+            btn.onclick = function() {
+                tg.openLink("https://t.me/dropshipping_kachakola_bot/app");
+                closeCustomAlert();
+                // বাটন রিসেট
+                setTimeout(() => { 
+                    btn.textContent = "OK"; 
+                    btn.onclick = closeCustomAlert; 
+                }, 500);
+            };
+
+            overlay.style.display = 'flex';
+            setTimeout(() => alertBox.classList.add('show'), 10);
         }
 
         // Task Timer Modal Functions
@@ -1568,6 +1601,12 @@
         document.getElementById('submitWithdrawBtn').addEventListener('click', async function() {
             if (!currentUser || !appConfig) return showCustomAlert('Error', 'App data not loaded.', '❌');
 
+            // *** NEW: CHECK SALES COUNT FOR WITHDRAWAL ***
+            if (userTotalSales < 5) {
+                showSalesRestrictionAlert(); // Show the new popup
+                return; // Stop execution
+            }
+
             const paymentMethodId = document.getElementById('paymentMethod').value;
             const withdrawAmountInput = document.getElementById('withdrawAmount').value;
             const paymentAddress = document.getElementById('paymentAddress').value.trim();
@@ -1780,20 +1819,25 @@
             userDocRef.onSnapshot(async (doc) => {
                 if (doc.exists) {
                     currentUser = doc.data();
+                    
+                    // *** NEW: Store Membership Status globally ***
+                    if (currentUser.membershipStatus) {
+                        userMembershipStatus = currentUser.membershipStatus;
+                    }
 
-                    // *** BAN CHECK LOGIC ADDED HERE ***
+                    // *** BAN CHECK ***
                     if (currentUser.isBanned === true) {
                         const reason = currentUser.banReason || "অস্বাভাবিক কার্যকলাপ এবং কমিউনিটি গাইডলাইন লঙ্ঘনের কারণে আপনার অ্যাকাউন্টটি সাময়িকভাবে স্থগিত করা হয়েছে।";
                         document.getElementById('banReasonText').innerText = reason;
                         document.getElementById('banOverlay').style.display = 'flex';
-                        return; // Stop any further processing
+                        return; // Stop
                     } else {
                          document.getElementById('banOverlay').style.display = 'none';
                     }
 
                     checkDailyReset(currentUser);
                 } else {
-                    // Create new user
+                    // Create new user (Previous logic)
                     const newUser = {
                         userId: userId,
                         first_name: tgUser.first_name || '',
@@ -1810,7 +1854,8 @@
                         referredUsersCount: 0,
                         completedTasks: {},
                         lastCheckInDate: "",
-                        isBanned: false, // Default not banned
+                        isBanned: false, 
+                        membershipStatus: 'inactive', // Default for new users
                         createdAt: firebase.firestore.FieldValue.serverTimestamp()
                     };
 
@@ -1854,11 +1899,19 @@
                 showCustomAlert('Error', 'Failed to load user data.', '❌');
             });
             
+            // *** NEW: Listen for Completed Sales (Real-time) ***
+            db.collection('orders')
+              .where('userId', '==', userId)
+              .where('status', '==', 'completed')
+              .onSnapshot(snap => {
+                  userTotalSales = snap.size;
+                  console.log("Total Sales Updated:", userTotalSales);
+              });
+            
              db.collection('config').doc('appConfig').onSnapshot((doc) => {
                 if(doc.exists) {
                     appConfig = doc.data();
                     console.log("App config updated in real-time.");
-                    // রিয়েল-টাইম আপডেটেও জোন লোড রাখা
                     loadMonetagSDK(appConfig.monetagZoneId);
                     updateUI();
                 }
@@ -1871,13 +1924,16 @@
         document.addEventListener('DOMContentLoaded', () => {
             initApp();
             
+            // *** UPDATED SHOP BUTTON LOGIC ***
             document.getElementById('shopButton').addEventListener('click', () => {
-                const shopUrl = "https://dailydeal.sell-bazar.com";
-                try {
+                if (userMembershipStatus === 'active') {
+                    // Active Member -> Open Shop
+                    const shopUrl = "https://dailydeal.sell-bazar.com";
                     tg.openLink(shopUrl);
-                } catch (e) {
-                    console.error("Failed to open shop link:", e);
-                    showCustomAlert('Error', 'Could not open the shop.', '❌');
+                } else {
+                    // Inactive Member -> Open Dropshipping Bot
+                    const botUrl = "https://t.me/dropshipping_kachakola_bot/app";
+                    tg.openLink(botUrl);
                 }
             });
         });
